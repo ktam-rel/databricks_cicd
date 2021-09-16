@@ -1,2 +1,2 @@
 # Databricks notebook source
-%md # Eventually I will load some data
+%md # Copy data from a blob location into ADLS container

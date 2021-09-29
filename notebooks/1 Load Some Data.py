@@ -1,5 +1,11 @@
 # Databricks notebook source
 # MAGIC %md ## Copy data from a URL into ADLS container
+# MAGIC 
+# MAGIC Right now this just downloads one CSV file. Ideally it should grab all CSV files in this directory
+# MAGIC - https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_daily_reports
+# MAGIC 
+# MAGIC Use this URL to get a JSON object listing directory contents:
+# MAGIC - https://api.github.com/repos/CSSEGISandData/COVID-19/contents/csse_covid_19_data/csse_covid_19_daily_reports?ref=master
 
 # COMMAND ----------
 
@@ -40,3 +46,7 @@ print(data)
 file1 = open("/dbfs/mnt/ktam/test123.csv", "wb")
 file1.write(data)
 file1.close()
+
+# COMMAND ----------
+
+

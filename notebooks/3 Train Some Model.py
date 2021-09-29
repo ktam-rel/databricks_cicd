@@ -26,18 +26,77 @@ dbutils.fs.mount(
 
 # COMMAND ----------
 
-import urllib.request  # the lib that handles the url stuff
 
-data = urllib.request.urlopen("https://raw.githubusercontent.com/maria-alphonsa-thomas/Multi-Time-Series-Pyspark-Pandas-UDF/master/kaggle/train.csv").read()
-
-file1 = open("/dbfs/mnt/ktam/timeseries.csv", "wb")
-file1.write(data)
-file1.close()
 
 # COMMAND ----------
 
 
 # import the necessary pyspark and pandas libraries
+
+from pyspark.sql.functions import pandas_udf, PandasUDFType, unix_timestamp, col, substring
+from pyspark.sql.types import StructType,StructField,StringType,LongType,DoubleType,FloatType
+
+
+import statsmodels.tsa.api as sm
+import numpy as np
+import pandas as pd
+
+
+# read the entire data as spark dataframe
+data = spark.read.format('csv').options(header='true', inferSchema='true').load('/mnt/ktam/*20*.csv').select('Combined_Key', 'Last_Update', 'Deaths')
+data = data.withColumn("Updated2", unix_timestamp(col("Last_Update"), "yyyy-MM-dd HH:mm:ss").cast("timestamp"))
+data = data.withColumn("Updated3", substring(col("Last_Update"),0,10))
+
+data.display()
+
+
+
+# COMMAND ----------
+
+#data.filter(col("Combined_Key") == "Argentina").coalesce(1).write.option("header",True).csv("/mnt/ktam/argentina.csv")
+
+data = data.filter(col("Combined_Key") == "Argentina")
+data.display()
+
+
+# COMMAND ----------
+
+data = spark.read.format('csv').options(header='true', inferSchema='true').load('/mnt/ktam/argentina_clean.csv')
+data = data.filter(col("Combined_Key") == "Argentina")
+##pandas udf
+schema = StructType([StructField('Combined_Key', StringType(), True),
+                     StructField('daily_forecast_1', LongType(), True),
+                     StructField('daily_forecast_2', LongType(), True)])
+
+@pandas_udf(schema, PandasUDFType.GROUPED_MAP)
+def holt_winters_time_series_udf(data):
+  
+    data.set_index('Last_Update',inplace = True)
+    time_series_data = data['Deaths']
+    
+
+    ##the model
+    model = sm.ExponentialSmoothing(np.asarray(time_series_data),trend='add').fit()
+
+    ##forecast values
+    forecast_values = pd.Series(model.forecast(2),name = 'fitted_values')
+    
+    
+    return pd.DataFrame({'Combined_Key': [str(data.Combined_Key.iloc[0])], 'daily_forecast_1': [forecast_values[0]], 'daily_forecast_2':[forecast_values[1]]})
+
+forecasted_spark_df = data.groupby('Combined_Key').apply(holt_winters_time_series_udf)
+forecasted_spark_df.display()
+
+# COMMAND ----------
+
+# MAGIC %md Sample code taken from this article about timeseries forecasting using pandas UDF in spark: 
+# MAGIC 
+# MAGIC https://medium.com/walmartglobaltech/multi-time-series-forecasting-in-spark-cc42be812393
+# MAGIC 
+# MAGIC https://github.com/maria-alphonsa-thomas/Multi-Time-Series-Pyspark-Pandas-UDF
+
+# COMMAND ----------
+
 
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import StructType,StructField,StringType,LongType,DoubleType,FloatType
@@ -46,6 +105,13 @@ import statsmodels.tsa.api as sm
 import numpy as np
 import pandas as pd
 
+import urllib.request  # the lib that handles the url stuff
+
+data = urllib.request.urlopen("https://raw.githubusercontent.com/maria-alphonsa-thomas/Multi-Time-Series-Pyspark-Pandas-UDF/master/kaggle/train.csv").read()
+
+file1 = open("/dbfs/mnt/ktam/timeseries.csv", "wb")
+file1.write(data)
+file1.close()
 
 # read the entire data as spark dataframe
 data = spark.read.format('csv').options(header='true', inferSchema='true').load('/mnt/ktam/timeseries.csv')\
@@ -85,12 +151,11 @@ def holt_winters_time_series_udf(data):
 
 
 ##aggregating the forecasted results in the form of a spark dataframe
-forecasted_spark_df = data_selected_store_departments.groupby(['Store','Dept']).apply(holt_winters_time_series_udf)
+forecasted_spark_df = data.groupby(['Store','Dept']).apply(holt_winters_time_series_udf)
 
 
 ## to see the forecasted results
 forecasted_spark_df.show(100)
-
 
 # COMMAND ----------
 

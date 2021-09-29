@@ -26,7 +26,7 @@ dbutils.fs.mount(
 
 # COMMAND ----------
 
-df = spark.read.option("header", "true").csv("/mnt/ktam/*.csv")
+df = spark.read.option("header", "true").csv("/mnt/ktam/*20*.csv")
 df.display()
 
 # COMMAND ----------
@@ -43,3 +43,8 @@ spark.read.format("delta").load("/mnt/ktam/delta/output_delta").createOrReplaceT
 
 spark.sql("SELECT count(*) FROM covid_delta").show()
 spark.sql("SELECT * FROM covid_delta LIMIT 5").show()
+spark.sql("SELECT * FROM covid_delta WHERE Combined_Key = 'Albania'").show()
+
+# COMMAND ----------
+
+

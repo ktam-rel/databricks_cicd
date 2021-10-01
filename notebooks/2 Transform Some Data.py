@@ -26,9 +26,13 @@ dbutils.fs.mount(
 
 # COMMAND ----------
 
+
+from pyspark.sql.functions import col, substring
+from pyspark.sql.types import IntegerType
+
 df = spark.read.option("header", "true").csv("/mnt/ktam/*20*.csv")
 df = df.withColumn("Last_Update", substring(col("Last_Update"),0,10))
-df = df.withColumn("Deaths", data["Deaths"].cast(IntegerType()))
+df = df.withColumn("Deaths", df["Deaths"].cast(IntegerType()))
 df = df.withColumnRenamed("Last_Update", "LastUpdate")
 df.display()
 
@@ -41,13 +45,6 @@ df.write.format("delta").mode("overwrite").save("/mnt/ktam/delta/output_delta")
 
 spark.read.format("delta").load("/mnt/ktam/delta/output_delta").createOrReplaceTempView("covid_delta")
 
-
-# COMMAND ----------
-
 spark.sql("SELECT count(*) FROM covid_delta").show()
 spark.sql("SELECT * FROM covid_delta LIMIT 5").show()
 spark.sql("SELECT * FROM covid_delta WHERE Combined_Key = 'Albania'").show()
-
-# COMMAND ----------
-
-

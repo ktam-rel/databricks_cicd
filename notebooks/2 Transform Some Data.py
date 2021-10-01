@@ -27,11 +27,14 @@ dbutils.fs.mount(
 # COMMAND ----------
 
 df = spark.read.option("header", "true").csv("/mnt/ktam/*20*.csv")
+df = df.withColumn("Last_Update", substring(col("Last_Update"),0,10))
+df = df.withColumn("Deaths", data["Deaths"].cast(IntegerType()))
+df = df.withColumnRenamed("Last_Update", "LastUpdate")
 df.display()
+
 
 # COMMAND ----------
 
-df = df.withColumnRenamed("Last Update", "LastUpdate")
 df.write.format("delta").mode("overwrite").save("/mnt/ktam/delta/output_delta")
 
 # COMMAND ----------

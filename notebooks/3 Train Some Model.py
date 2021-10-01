@@ -27,14 +27,10 @@ dbutils.fs.mount(
 # COMMAND ----------
 
 
-
-# COMMAND ----------
-
-
 # import the necessary pyspark and pandas libraries
 
 from pyspark.sql.functions import pandas_udf, PandasUDFType, unix_timestamp, col, substring
-from pyspark.sql.types import StructType,StructField,StringType,LongType,DoubleType,FloatType
+from pyspark.sql.types import StructType,StructField,StringType,IntegerType,DoubleType,FloatType
 
 
 import statsmodels.tsa.api as sm
@@ -46,23 +42,30 @@ import pandas as pd
 data = spark.read.format('csv').options(header='true', inferSchema='true').load('/mnt/ktam/*20*.csv').select('Combined_Key', 'Last_Update', 'Deaths')
 data = data.withColumn("Updated2", unix_timestamp(col("Last_Update"), "yyyy-MM-dd HH:mm:ss").cast("timestamp"))
 data = data.withColumn("Updated3", substring(col("Last_Update"),0,10))
+data = data.withColumn("Deaths", data["Deaths"].cast(IntegerType()))
 
 data.display()
+data.printSchema()
 
 
 
 # COMMAND ----------
 
 #data.filter(col("Combined_Key") == "Argentina").coalesce(1).write.option("header",True).csv("/mnt/ktam/argentina.csv")
-
-data = data.filter(col("Combined_Key") == "Argentina")
+data2 = spark.read.format('csv').options(header='true', inferSchema='true').load('/mnt/ktam/argentina_clean.csv')
+data = data.filter((data.Combined_Key == "Argentina")).orderBy(col("Updated3"))
 data.display()
+data2.display()
+data.printSchema()
+data2.printSchema()
 
 
 # COMMAND ----------
 
-data = spark.read.format('csv').options(header='true', inferSchema='true').load('/mnt/ktam/argentina_clean.csv')
-data = data.filter(col("Combined_Key") == "Argentina")
+selected_com = data.groupBy(['Combined_Key']).count().filter("count > 104").select("Combined_Key")
+data_selected_groups = data.join(selected_com,['Combined_Key'],'inner')
+
+
 ##pandas udf
 schema = StructType([StructField('Combined_Key', StringType(), True),
                      StructField('daily_forecast_1', LongType(), True),
@@ -71,7 +74,7 @@ schema = StructType([StructField('Combined_Key', StringType(), True),
 @pandas_udf(schema, PandasUDFType.GROUPED_MAP)
 def holt_winters_time_series_udf(data):
   
-    data.set_index('Last_Update',inplace = True)
+    data.set_index('Updated3',inplace = True)
     time_series_data = data['Deaths']
     
 
@@ -84,7 +87,7 @@ def holt_winters_time_series_udf(data):
     
     return pd.DataFrame({'Combined_Key': [str(data.Combined_Key.iloc[0])], 'daily_forecast_1': [forecast_values[0]], 'daily_forecast_2':[forecast_values[1]]})
 
-forecasted_spark_df = data.groupby('Combined_Key').apply(holt_winters_time_series_udf)
+forecasted_spark_df = data_selected_groups.groupby('Combined_Key').apply(holt_winters_time_series_udf)
 forecasted_spark_df.display()
 
 # COMMAND ----------
@@ -116,6 +119,8 @@ file1.close()
 # read the entire data as spark dataframe
 data = spark.read.format('csv').options(header='true', inferSchema='true').load('/mnt/ktam/timeseries.csv')\
 .select('Store','Dept','Date','Weekly_Sales')
+
+data.printSchema()
 
 ## basic data cleaning before implementing the pandas udf
 ##removing Store - Dept combination with less than 2 years (52 weeks ) of data

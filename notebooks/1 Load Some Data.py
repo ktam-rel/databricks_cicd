@@ -37,16 +37,22 @@ dbutils.fs.ls(mount_str)
 # COMMAND ----------
 
 import urllib.request  # the lib that handles the url stuff
+import json
 
-data = urllib.request.urlopen("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/archived_data/archived_daily_case_updates/01-28-2020_1300.csv").read()
-print(data)
+covid_data_dir_URL = urllib.request.urlopen(
+    "https://api.github.com/repos/CSSEGISandData/COVID-19/contents/csse_covid_19_data/csse_covid_19_daily_reports?ref=master")
+response = covid_data_dir_URL.read()
+encoding = covid_data_dir_URL.info().get_content_charset('utf-8')
+files = json.loads(response.decode(encoding))
 
-# COMMAND ----------
+for f in files:
+    path = f["path"]
 
-file1 = open("/dbfs/mnt/ktam/test123.csv", "wb")
-file1.write(data)
-file1.close()
+    if path.endswith(".csv"):
+        covid_data_file_URL = urllib.request.urlopen(f["download_url"])
+        data = covid_data_file_URL.read().decode(covid_data_file_URL.headers.get_content_charset())
 
-# COMMAND ----------
+        writepath = "/mnt/ktam/" + path
+        dbutils.fs.put(writepath, data, overwrite=True)
 
-
+        print("Wrote file to " + writepath)

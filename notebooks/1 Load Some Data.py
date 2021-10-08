@@ -56,6 +56,5 @@ def download_covid_data(df):
     writepath = '/dbfs/mnt/ktam/' + df.path
     with open(writepath, 'w') as f:
         f.write(data)
-    'sync ' + writepath
 
 pathsDF.filter(pathsDF.path.endswith('.csv')).foreach(download_covid_data)

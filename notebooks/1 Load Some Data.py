@@ -45,14 +45,17 @@ response = covid_data_dir_URL.read()
 encoding = covid_data_dir_URL.info().get_content_charset('utf-8')
 files = json.loads(response.decode(encoding))
 
-for f in files:
-    path = f["path"]
+paths = list(map(lambda f: (f["path"], f["download_url"]), files))
+pathsSchema = ['path', 'download_url']
 
-    if path.endswith(".csv"):
-        covid_data_file_URL = urllib.request.urlopen(f["download_url"])
-        data = covid_data_file_URL.read().decode(covid_data_file_URL.headers.get_content_charset())
+pathsDF = spark.createDataFrame(paths, pathsSchema)
 
-        writepath = "/mnt/ktam/" + path
-        dbutils.fs.put(writepath, data, overwrite=True)
+def download_covid_data(df):
+    covid_data_file_URL = urllib.request.urlopen(df.download_url)
+    data = covid_data_file_URL.read().decode(covid_data_file_URL.headers.get_content_charset())
+    writepath = '/dbfs/mnt/ktam/' + df.path
+    with open(writepath, 'w') as f:
+        f.write(data)
+    'sync ' + writepath
 
-        print("Wrote file to " + writepath)
+pathsDF.filter(pathsDF.path.endswith('.csv')).foreach(download_covid_data)

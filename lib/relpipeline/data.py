@@ -15,3 +15,17 @@ def mount(dbutils, container, storage_account, scope, key, mount_as):
         mount_point = mount_as,
         extra_configs = {f"fs.azure.account.key.{storage_account}.blob.core.windows.net":dbutils.secrets.get(scope = scope, key = key)})
 
+
+
+
+import time
+
+def compute(x):
+    response = expensive_api_call()
+    return response + x
+
+def expensive_api_call():
+    time.sleep(10) # takes 1,000 seconds
+    return 123
+
+

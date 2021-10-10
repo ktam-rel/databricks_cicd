@@ -37,16 +37,24 @@ dbutils.fs.ls(mount_str)
 # COMMAND ----------
 
 import urllib.request  # the lib that handles the url stuff
+import json
 
-data = urllib.request.urlopen("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/archived_data/archived_daily_case_updates/01-28-2020_1300.csv").read()
-print(data)
+covid_data_dir_URL = urllib.request.urlopen(
+    "https://api.github.com/repos/CSSEGISandData/COVID-19/contents/csse_covid_19_data/csse_covid_19_daily_reports?ref=master")
+response = covid_data_dir_URL.read()
+encoding = covid_data_dir_URL.info().get_content_charset('utf-8')
+files = json.loads(response.decode(encoding))
 
-# COMMAND ----------
+paths = list(map(lambda f: (f["path"], f["download_url"]), files))
+pathsSchema = ['path', 'download_url']
 
-file1 = open("/dbfs/mnt/ktam/test123.csv", "wb")
-file1.write(data)
-file1.close()
+pathsDF = spark.createDataFrame(paths, pathsSchema)
 
-# COMMAND ----------
+def download_covid_data(df):
+    covid_data_file_URL = urllib.request.urlopen(df.download_url)
+    data = covid_data_file_URL.read().decode(covid_data_file_URL.headers.get_content_charset())
+    writepath = '/dbfs/mnt/ktam/' + df.path
+    with open(writepath, 'w') as f:
+        f.write(data)
 
-
+pathsDF.filter(pathsDF.path.endswith('.csv')).foreach(download_covid_data)

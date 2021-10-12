@@ -16,7 +16,21 @@ def mount(dbutils, container, storage_account, scope, key, mount_as):
         extra_configs = {f"fs.azure.account.key.{storage_account}.blob.core.windows.net":dbutils.secrets.get(scope = scope, key = key)})
 
 
+import urllib.request  # the lib that handles the url stuff
+import json
 
+def get_json_from_url(url):
+    context = urllib.request.urlopen(url)
+    response = context.read()
+    encoding = context.info().get_content_charset('utf-8')
+    return json.loads(response.decode(encoding))
+
+
+
+def get_fileinfo_dataframe_from_json(json_obj):
+    paths = list(map(lambda f: (f["path"], f["download_url"]), json_obj))
+    pathsSchema = ['path', 'download_url']
+    return spark.createDataFrame(paths, pathsSchema)
 
 import time
 

@@ -30,11 +30,22 @@ response = covid_data_dir_URL.read()
 encoding = covid_data_dir_URL.info().get_content_charset('utf-8')
 files = json.loads(response.decode(encoding))
 
+
+from relpipeline.data import get_json_from_url
+
+data_url = "https://api.github.com/repos/CSSEGISandData/COVID-19/contents/csse_covid_19_data/csse_covid_19_daily_reports?ref=master")
+
+files_info = get_json_from_url(data_url)
+
+# function to create dataframe from from json
+
 paths = list(map(lambda f: (f["path"], f["download_url"]), files))
 pathsSchema = ['path', 'download_url']
 
 pathsDF = spark.createDataFrame(paths, pathsSchema)
 
+
+# function to download file from info
 def download_covid_data(df):
     covid_data_file_URL = urllib.request.urlopen(df.download_url)
     data = covid_data_file_URL.read().decode(covid_data_file_URL.headers.get_content_charset())

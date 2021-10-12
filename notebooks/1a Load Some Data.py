@@ -8,8 +8,7 @@
 # MAGIC - https://api.github.com/repos/CSSEGISandData/COVID-19/contents/csse_covid_19_data/csse_covid_19_daily_reports?ref=master
 
 # COMMAND ----------
-
-from relpipeline.data import mount, get_dbutils
+from relpipeline.data import *
 
 db_utils = get_dbutils(spark)
 mount_str = "/mnt/ktam"
@@ -17,18 +16,10 @@ mount(db_utils, "ktam-test", "analyticsresearch", "analyticsresearch-storageacct
 
 # COMMAND ----------
 
-db_utils.fs.ls(mount_str)
+covid_data_dir_URL = "https://api.github.com/repos/CSSEGISandData/COVID-19/contents/csse_covid_19_data/csse_covid_19_daily_reports?ref=master"
+data_json = get_json_from_url(covid_data_dir_URL)
 
-# COMMAND ----------
-
-import urllib.request  # the lib that handles the url stuff
-import json
-
-covid_data_dir_URL = urllib.request.urlopen(
-    "https://api.github.com/repos/CSSEGISandData/COVID-19/contents/csse_covid_19_data/csse_covid_19_daily_reports?ref=master")
-response = covid_data_dir_URL.read()
-encoding = covid_data_dir_URL.info().get_content_charset('utf-8')
-files = json.loads(response.decode(encoding))
+files = get_fileinfo_dataframe_from_json(data_json)
 
 
 from relpipeline.data import get_json_from_url
@@ -42,7 +33,7 @@ files_info = get_json_from_url(data_url)
 paths = list(map(lambda f: (f["path"], f["download_url"]), files))
 pathsSchema = ['path', 'download_url']
 
-pathsDF = spark.createDataFrame(paths, pathsSchema)
+pathsDF = spark.createDataFrame(paths, pathsSchema)s 
 
 
 # function to download file from info

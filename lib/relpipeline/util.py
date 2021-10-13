@@ -41,3 +41,8 @@ def download_all(dbutils, dir_path, files):
     dbutils.fs.mkdirs(dir_path)
     files.filter(files.name.endswith('.csv')).foreach(lambda f: download_file_from_dataframe(f, dir_path))
 
+# python.exe .\setup.py bdist_wheel
+# databricks fs cp .\dist\relpipeline-1.0.0-py3-none-any.whl dbfs:/FileStore/relpipeline-1.0.0-py3-none-any.whl --overwrite
+# databricks libraries uninstall --cluster-id 0913-144225-fifes758 --whl dbfs:/FileStore/relpipeline-1.0.0-py3-none-any.whl
+# databricks clusters restart --cluster-id 0913-144225-fifes758
+# databricks libraries install --cluster-id 0913-144225-fifes758 --whl dbfs:/FileStore/relpipeline-1.0.0-py3-none-any.whl

@@ -9,7 +9,7 @@
 
 # COMMAND ----------
 
-from relpipeline.data import *
+from relpipeline.util import *
 
 db_utils = get_dbutils(spark)
 mount_str = "/mnt/ktam"

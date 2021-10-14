@@ -29,10 +29,10 @@ def get_fileinfo_dataframe_from_json(spark, json_obj):
     pathsSchema = ['name', 'download_url']
     return spark.createDataFrame(paths, pathsSchema)
 
-def download_file_from_dataframe(df, base_path):
-    url = urllib.request.urlopen(df.download_url)
+def download_file_from_dataframe(file_row, base_path):
+    url = urllib.request.urlopen(file_row.download_url)
     data = url.read().decode(url.headers.get_content_charset())
-    writepath = base_path + df.name
+    writepath = base_path + file_row.name
     with open(writepath, 'w') as f:
         f.write(data)
 
@@ -41,8 +41,3 @@ def download_all(dbutils, dir_path, files):
     dbutils.fs.mkdirs(dir_path)
     files.filter(files.name.endswith('.csv')).foreach(lambda f: download_file_from_dataframe(f, dir_path))
 
-# python.exe .\setup.py bdist_wheel
-# databricks fs cp .\dist\relpipeline-1.0.0-py3-none-any.whl dbfs:/FileStore/relpipeline-1.0.0-py3-none-any.whl --overwrite
-# databricks libraries uninstall --cluster-id 0913-144225-fifes758 --whl dbfs:/FileStore/relpipeline-1.0.0-py3-none-any.whl
-# databricks clusters restart --cluster-id 0913-144225-fifes758
-# databricks libraries install --cluster-id 0913-144225-fifes758 --whl dbfs:/FileStore/relpipeline-1.0.0-py3-none-any.whl

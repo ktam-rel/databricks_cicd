@@ -1,5 +1,5 @@
-from relpipeline.util import compute, download_all
-
+from relpipeline.util import compute, download_all, download_file_from_dataframe
+from unittest.mock import ANY, call
 
 def test_download_all_recreates_directory(mocker):
     dbutils = mocker.MagicMock()
@@ -31,23 +31,26 @@ def test_download_all_only_processes_csv_files_v1(mocker):
     files.filter.assert_called_once()
     files.name.endswith.assert_called_with(".csv")
 
-
 def test_download_all_only_processes_csv_files_v2(mocker):
     dbutils = mocker.MagicMock()
+    patched_download = mocker.patch('relpipeline.util.download_file_from_dataframe')
 
-
-    # In Python
     from pyspark.sql import SparkSession
-    from pyspark.sql.functions import avg
-    # Create a DataFrame using SparkSession
     spark = (SparkSession
         .builder
-        .appName("AuthorsAges")
+        .appName("TestRelPipeline")
         .getOrCreate())
-    # Create a DataFrame
-    data_df = spark.createDataFrame([("Brooke", 20), ("Denny", 31), ("Jules", 30),
-        ("TD", 35), ("Brooke", 25)], ["name", "age"])
-    # Group the same names together, aggregate their ages, and compute an average
-    avg_df = data_df.groupBy("name").agg(avg("age"))
-    # Show the results of the final execution
-    avg_df.show()
+
+    files = spark.createDataFrame([("1.csv", "http://some_url1")
+        , ("2.csv", "http://some_url2")
+        , ("3.doc", "http://some_url3")]
+        , ["name", "download_url"])
+
+    download_all(dbutils, "some\\path", files)
+
+    #calls = [call(ANY, "http://some_url1"), call(ANY, "http://some_url2")]
+    #patched_download.assert_has_calls(calls)
+
+    #print("Call Count!!! " + str(patched_download.call_count)) 
+    patched_download.assert_called()
+

@@ -57,5 +57,35 @@ def transform_csv_data(spark, csv_path):
 def write_df_to_delta_table(df, base_path):
     df.write.format("delta").mode("overwrite").save(base_path  + "/delta/output_delta")
 
+def load_from_delta(spark, delta_path):
+    return spark.read.format("delta").load("/mnt/ktam/delta/output_delta").select('Combined_Key', 'LastUpdate', 'Deaths')
+
+def filter_groups_less_than(df, min_count, group_key):
+    selected_keys = df.groupBy([group_key]).count().filter(f"count > {min_count}").select(group_key)
+    return df.join(selected_keys, [group_key], 'inner')
+
+
+import statsmodels.tsa.api as sm
+import numpy as np
+import pandas as pd
+from pyspark.sql.functions import pandas_udf, PandasUDFType, unix_timestamp, col, substring
+from pyspark.sql.types import StructType,StructField,StringType,IntegerType,DoubleType,FloatType
+
+schema = StructType([StructField('Combined_Key', StringType(), True),
+                     StructField('daily_forecast_1', IntegerType(), True),
+                     StructField('daily_forecast_2', IntegerType(), True)])
+
+@pandas_udf(schema, PandasUDFType.GROUPED_MAP)
+def holt_winters_time_series_udf(data):
+  
+    time_series_data = data['Deaths']
+    
+    ##the model
+    model = sm.ExponentialSmoothing(np.asarray(time_series_data),trend='add').fit()
+
+    ##forecast values
+    forecast_values = pd.Series(model.forecast(2),name = 'fitted_values')
+        
+    return pd.DataFrame({'Combined_Key': [str(data.Combined_Key.iloc[0])], 'daily_forecast_1': [forecast_values[0]], 'daily_forecast_2':[forecast_values[1]]})
 
 

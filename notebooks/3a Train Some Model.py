@@ -9,13 +9,13 @@
 
 # COMMAND ----------
 
-from pyspark.sql.functions import pandas_udf, PandasUDFType, unix_timestamp, col, substring
-from pyspark.sql.types import StructType,StructField,StringType,IntegerType,DoubleType,FloatType
+from relpipeline.util import *
 
+db_utils = get_dbutils(spark)
+mount_str = "/mnt/ktam"
+mount(db_utils, "ktam-test", "analyticsresearch", "analyticsresearch-storageacctscope", "storage-account-key", mount_str)
 
-import statsmodels.tsa.api as sm
-import numpy as np
-import pandas as pd
+# COMMAND ----------
 
 data = load_from_delta(spark, "/mnt/ktam/delta/output_delta")
 data_selected_groups = filter_groups_less_than(data, 100, 'Combined_Key')
@@ -23,5 +23,7 @@ data_selected_groups = filter_groups_less_than(data, 100, 'Combined_Key')
 forecasted_spark_df = data_selected_groups.groupby('Combined_Key').apply(holt_winters_time_series_udf)
 forecasted_spark_df.display()
 
+
+# COMMAND ----------
 
 

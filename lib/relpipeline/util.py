@@ -1,5 +1,8 @@
 import urllib.request  # the lib that handles the url stuff
 import json
+from pyspark.sql.functions import col, substring
+from pyspark.sql.types import IntegerType
+
 
 def get_dbutils(spark):
         try:
@@ -36,8 +39,23 @@ def download_file_from_dataframe(file_row, base_path):
     with open(writepath, 'w') as f:
         f.write(data)
 
+def filter_files_dataframe(files):
+    return files.filter(files.name.endswith('.csv'))
+
 def download_all(dbutils, dir_path, files):
     dbutils.fs.rm(dir_path, True)
     dbutils.fs.mkdirs(dir_path)
-    files.filter(files.name.endswith('.csv')).foreach(lambda f: download_file_from_dataframe(f, dir_path))
+    filter_files_dataframe(files).foreach(lambda f: download_file_from_dataframe(f, dir_path))
+
+def transform_csv_data(spark, csv_path):
+    df = spark.read.option("header", "true").csv(csv_path + "/*.csv")
+    df = df.withColumn("Last_Update", substring(col("Last_Update"),0,10))
+    df = df.withColumn("Deaths", df["Deaths"].cast(IntegerType()))
+    df = df.withColumnRenamed("Last_Update", "LastUpdate")
+    return df
+
+def write_df_to_delta_table(df, base_path):
+    df.write.format("delta").mode("overwrite").save(base_path  + "/delta/output_delta")
+
+
 

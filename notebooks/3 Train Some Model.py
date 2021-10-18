@@ -21,13 +21,6 @@ import numpy as np
 import pandas as pd
 
 data = spark.read.format("delta").load("/mnt/ktam/delta/output_delta").select('Combined_Key', 'LastUpdate', 'Deaths')
-data.display()
-data.printSchema()
-
-
-
-# COMMAND ----------
-
 selected_com = data.groupBy(['Combined_Key']).count().filter("count > 100").select("Combined_Key")
 data_selected_groups = data.join(selected_com,['Combined_Key'],'inner')
 

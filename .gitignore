@@ -3,3 +3,4 @@ lib/build
 lib/dist
 lib/*.egg-info
 env
+*__pycache__*

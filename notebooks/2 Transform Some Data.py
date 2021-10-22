@@ -30,7 +30,7 @@ dbutils.fs.mount(
 from pyspark.sql.functions import col, substring
 from pyspark.sql.types import IntegerType
 
-df = spark.read.option("header", "true").csv("/mnt/ktam/*20*.csv")
+df = spark.read.option("header", "true").csv("/mnt/ktam/data/*.csv")
 df = df.withColumn("Last_Update", substring(col("Last_Update"),0,10))
 df = df.withColumn("Deaths", df["Deaths"].cast(IntegerType()))
 df = df.withColumnRenamed("Last_Update", "LastUpdate")

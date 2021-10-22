@@ -36,6 +36,7 @@ dbutils.fs.ls(mount_str)
 
 # COMMAND ----------
 
+
 import urllib.request  # the lib that handles the url stuff
 import json
 
@@ -45,16 +46,22 @@ response = covid_data_dir_URL.read()
 encoding = covid_data_dir_URL.info().get_content_charset('utf-8')
 files = json.loads(response.decode(encoding))
 
-paths = list(map(lambda f: (f["path"], f["download_url"]), files))
-pathsSchema = ['path', 'download_url']
+filesList = list(map(lambda f: (f["name"], f["download_url"]), files))
+filesSchema = ['name', 'download_url']
 
-pathsDF = spark.createDataFrame(paths, pathsSchema)
+dir_path = '/dbfs/mnt/ktam/data'
 
-def download_covid_data(df):
-    covid_data_file_URL = urllib.request.urlopen(df.download_url)
-    data = covid_data_file_URL.read().decode(covid_data_file_URL.headers.get_content_charset())
-    writepath = '/dbfs/mnt/ktam/' + df.path
+dbutils.fs.rm(dir_path, True)
+dbutils.fs.mkdirs(dir_path)
+
+filesDF = spark.createDataFrame(filesList, filesSchema)
+
+def download_file(row):
+    file = urllib.request.urlopen(row.download_url)
+    data = file.read().decode(file.headers.get_content_charset())
+    writepath = dir_path + '/' + row.name
     with open(writepath, 'w') as f:
         f.write(data)
 
-pathsDF.filter(pathsDF.path.endswith('.csv')).foreach(download_covid_data)
+filesDF.filter(filesDF.name.endswith('.csv')).foreach(download_file)
+
